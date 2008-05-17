@@ -7,10 +7,13 @@
 Nil = object()
 
 class NodeRef(object):
+    "Reference to a node in the heap. Used for decreasing keys and deletion."
     def __init__(self, node):
         self.ref = node
+        self.in_tree = True
 
 class Node(object):
+    "Internal node of the heap. Don't use directly."
     def __init__(self, key, val=Nil):
         self.degree = 0
         self.parent = None
@@ -32,14 +35,17 @@ class Node(object):
         return '(%s, c:%s, n:%s)' % (k(self), k(self.child), k(self.next))
 
     def link(self, other):
-        """Makes other a subtree of self.
-        """
+        "Makes other a subtree of self."
         other.parent  = self
         other.next    = self.child
         self.child    = other
         self.degree  += 1
 
+
 def _merge(h1, h2):
+    """Merge two lists of heap roots, sorted by degree.
+       Returns the new head.
+    """
     if not h1:
         return h2
     if not h2:
@@ -66,6 +72,9 @@ def _merge(h1, h2):
     return h
 
 def _reverse(h):
+    """Reverse the heap root list. 
+       Returns the new head.
+    """
     if not h:
         return None
     tail = None
@@ -78,7 +87,9 @@ def _reverse(h):
     h.next = tail
     return h
 
+
 class NegInfinity(object):
+    "Negative infinity. Dummy class used during deletion."
     def __lt__(self, other):
         return True
     
@@ -96,31 +107,12 @@ class NegInfinity(object):
 
 NegInf = NegInfinity()
 
+
 class BinomialHeap(object):
     def __init__(self, lst=[]):
         self.head = None
         for x in lst:
             self.insert(x)
-    
-    def __nonzero__(self):
-        return self.head != None
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        if self.head:
-            return self.extract_min()
-        else:
-            raise StopIteration
-
-    def __iadd__(self, other):
-        self.insert(other)
-        return self
-
-    def __ior__(self, other):
-        self.union(other)
-        return self
 
     def insert(self, key, value=Nil):
         n = Node(key, value)
@@ -149,6 +141,7 @@ class BinomialHeap(object):
                 self.head = x.next
             kids =  _reverse(x.child)
             self.__union(kids)
+            x.ref.in_tree = False
             return x.val
 
     def delete(self, noderef):
@@ -156,6 +149,7 @@ class BinomialHeap(object):
         self.extract_min()
 
     def decrease(self, noderef, key):
+        assert noderef.in_tree
         assert noderef.ref.ref == noderef
         node = noderef.ref
         assert key <= node.key
@@ -173,6 +167,26 @@ class BinomialHeap(object):
             # step up
             cur    = parent
             parent = cur.parent
+
+    def __nonzero__(self):
+        return self.head != None
+
+    def __iter__(self):
+        return self
+
+    def __iadd__(self, other):
+        self.insert(other)
+        return self
+
+    def __ior__(self, other):
+        self.union(other)
+        return self
+
+    def next(self):
+        if self.head:
+            return self.extract_min()
+        else:
+            raise StopIteration
 
     def __min(self):
         if not self.head:
@@ -225,4 +239,5 @@ class BinomialHeap(object):
         self.head = h1
 
 def heap(lst=[]):
+    "Shortcut for BinomialHeap(lst)"
     return BinomialHeap(lst)
