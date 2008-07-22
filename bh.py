@@ -45,33 +45,14 @@ From Wikipedia:
   More details: http://en.wikipedia.org/wiki/Binomial_heap
 """
 
-class NIL(object):
-    """Dummy class used during deletion and to denote the absence of values.
-    Behaves like negative infinity.
-    """
-    def __lt__(self, other):
-        return True
-    
-    def __le__(self, other):
-        return True
-
-    def __gt__(self, other):
-        return False
-
-    def __ge__(self, other):
-        return False
-
-    def __str__(self):
-        return 'NIL'
-
-# provide special value that is not None, since None is a valid value
-Nil = NIL()
-
 class NodeRef(object):
-    "Reference to a node in the heap. Used for decreasing keys and deletion."
-    def __init__(self, node):
+    """Reference to a node in the heap. Used for decreasing keys and deletion.
+    Do not use this class directly; only use instances returned by BinomialHeap.insert()!
+    You should only use NodeRef.delete() and NodeRef.decrease(new_priority).
+    """
+    def __init__(self, node, get_heap):
         self.ref      = node
-#        self.heap_ref = heap_ref
+        self.get_heap = get_heap
         self.in_tree  = True
     
     def __str__(self):
@@ -81,20 +62,42 @@ class NodeRef(object):
             return "<stale BinomialHeap Reference>"
 
     def decrease(self, new_key):
+        "Update the key of the referenced node to a lower value."
         assert self.in_tree
         assert self.ref.ref == self
         self.ref.decrease(new_key)
 
+    def delete(self):
+        """Remove the referenced node from the heap.
+        """
+        self.decrease(self)
+        v = self.get_heap().extract_min()
+        assert not self.in_tree
+        assert v is self.ref.val
+
+    def in_heap(self, heap):
+        """Returns True if 'self' is part of the BinomialHeap 'heap'; False otherwise.
+        """
+        return self.in_tree and self.get_heap() == heap
+
+    def __lt__(self, other):
+        "Behaves like negative infinity: always True."
+        return True
+
+    def __gt__(self, other):
+        "Behaves like negative infinity: always False."
+        return False
+
 class Node(object):
     "Internal node of the heap. Don't use directly."
-    def __init__(self, key, val=Nil):
+    def __init__(self, get_heap, key, val=None):
         self.degree = 0
         self.parent = None
         self.next   = None
         self.child  = None
         self.key    = key
-        self.ref    = NodeRef(self)
-        if val is Nil:
+        self.ref    = NodeRef(self, get_heap)
+        if val == None:
             val = key
         self.val    = val
 
@@ -111,7 +114,7 @@ class Node(object):
 
     def decrease(self, new_key):
         node = self
-        assert new_key <= node.key
+        assert new_key < node.key
         node.key = new_key
         cur    = node
         parent = cur.parent
@@ -179,6 +182,21 @@ class Node(object):
 class BinomialHeap(object):
     """From Wi
     """
+
+    class __Ref(object):
+        def __init__(self, h):
+            self.heap = h
+            self.ref  = None
+        def get_heap_ref(self):
+            if not self.ref:
+                return self
+            else:
+                # compact
+                self.ref  = self.ref.get_heap_ref()
+                return self.ref
+        def get_heap(self):
+            return self.get_heap_ref().heap
+
     def __init__(self, lst=[]):
         """Populate a new heap with the (key, value) pairs in 'lst'.
         If the elements of lst are not subscriptable, then they are treated as
@@ -186,31 +204,33 @@ class BinomialHeap(object):
         """
         self.head = None
         self.size = 0
+        self.ref  = BinomialHeap.__Ref(self)
         for x in lst:
             try:
                 self.insert(x[0], x[1])
             except TypeError:
                 self.insert(x)
 
-    def insert(self, key, value=Nil):
+    def insert(self, key, value=None):
         """Insert 'value' in to the heap with priority 'key'. If 'value' is omitted,
         then 'key' is used as the value.
         Returns a reference (of type NodeRef) to the internal node in the tree. 
-        Use this reference to delete the key or change its priority.
+        Use this reference to delete the key or to change its priority.
         """
-        n = Node(key, value)
+        n = Node(self.ref.get_heap, key, value)
         self.__union(n)
         self.size += 1
         return n.ref
     
     def union(self, other):
         """Merge 'other' into 'self'. Returns None.
-        Note: This is a destructive operation; 'othe'r is an empty heap 
-              afterwards.
+        Note: This is a destructive operation; 'other' is an empty heap afterwards.
         """
-        h2, other.head = other.head, None
-        self.size, other.size = self.size + other.size, 0
+        self.size = self.size + other.size
+        h2        = other.head
         self.__union(h2)
+        other.ref.ref = self.ref
+        other.__init__()
     
     def min(self):
         """Returns the value with the minimum key (= highest priority) in the heap
@@ -240,34 +260,50 @@ class BinomialHeap(object):
             self.size -= 1
             return x.val
 
-    def delete(self, noderef):
-        """Remove the node referenced by 'noderef' from the heap. 
-        """
-        self.decrease(noderef, Nil)
-        self.extract_min()
-
     def __nonzero__(self):
+        """True if the heap is not empty; False otherwise."""
         return self.head != None
 
     def __iter__(self):
+        """Returns a _destructive_ iterator over the values in the heap. 
+        This violates the iterator protocol slightly, but is very useful.
+        """
         return self
 
     def __len__(self):
+        """Returns the number of items in this heap."""
         return self.size
 
     def __setitem__(self, key, value):
-        return self.insert(key, value)
+        """Insert.  
+        H[key] = value  is equivalent to  H.insert(key, value)
+        """
+        self.insert(key, value)
 
     def __iadd__(self, other):
+        """Merge.
+        a += b  is equivalent to  a.union(b).
+        """
         self.union(other)
         return self
 
     def next(self):
+        """Returns the value with the minimum key (= highest priority) in the heap
+        AND removes it from the heap; raises StopIteration if the heap is empty.
+        """
         if self.head:
             return self.extract_min()
         else:
             raise StopIteration
-        
+
+    def __contains__(self, ref):
+        """Test whether a given reference 'ref' is in this heap.
+        """
+        if type(ref) != NodeRef:
+            raise TypeError, "Expected a NodeRef"
+        else:
+            return ref.in_heap(self)
+
     def __min(self):
         if not self.head:
             return None
@@ -276,7 +312,7 @@ class BinomialHeap(object):
         prev = min
         cur  = min.next
         while cur:
-            if min.key > cur.key:
+            if cur.key < min.key:
                 min = cur
                 min_prev = prev
             prev = cur
@@ -346,17 +382,27 @@ if __name__ == "__main__":
     h2 = heap(tokens2)
     h3 = heap()
     line = "\n==================================="
-    h3.insert(90, line)
-    h3.insert(-2, line)
-    h3.insert(200, line)
-    h3.insert(201, '\n\n')
+    h3[90]  = line
+    h3[-2]  = line
+    h3[200] = line
+    h3[201] = '\n\n'
     t1ref = h3.insert(1000, "\nUNC Alma Mater:")
     t2ref = h3.insert(120, "\nUNC Fight Song:")
+    bad   = [h3.insert(666, "Dook"), h3.insert(666, "Go Devils!"), 
+             h3.insert(666, "Blue Devils") ]
 
+
+    h2 += h3
     h1 += h2
-    h1 += h3
     t1ref.decrease(-1)
     t2ref.decrease(99)
+    print (t2ref in h3)
+    print (t1ref in h2)
+    print (t2ref in h1)
+    print (bad[0] in h3)
+    
+    for ref in bad:
+        ref.delete()
     for x in h1:
         print x, 
 
