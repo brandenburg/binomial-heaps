@@ -28,26 +28,28 @@
 
 """An implementation of Binomial Heaps.
 
-From Wikipedia: 
+From Wikipedia:
   A binomial heap is a heap similar to a binary heap but also supporting the
   operation of merging two heaps quickly. This is achieved by using a special
   tree structure.
 
   All of the following operations work in O(log n) time on a binomial heap with
-  n elements: 
-    - Insert a new element to the heap 
+  n elements:
+    - Insert a new element to the heap
     - Find the element with minimum key
-    - Delete the element with minimum key from the heap 
-    - Decrease key of a given element 
-    - Delete given element from the heap 
+    - Delete the element with minimum key from the heap
+    - Decrease key of a given element
+    - Delete given element from the heap
     - Merge two given heaps to one heap
 
   More details: http://en.wikipedia.org/wiki/Binomial_heap
+
+This implementation realizes the operations as described in
 """
 
 class ItemRef(object):
     """Reference to an item in the heap. Used for decreasing keys and deletion.
-    Do not use this class directly; only use instances returned by 
+    Do not use this class directly; only use instances returned by
     BinomialHeap.insert()!
 
     You should only use ItemRef.delete() and ItemRef.decrease(new_priority).
@@ -56,7 +58,7 @@ class ItemRef(object):
         self.ref      = node
         self.get_heap = get_heap
         self.in_tree  = True
-    
+
     def __str__(self):
         if self.in_tree:
             return "<BinomialHeap Reference to '%s'>" % str(self.ref.val)
@@ -78,7 +80,7 @@ class ItemRef(object):
         assert v is self.ref.val
 
     def in_heap(self, heap):
-        """Returns True if the referenced item is part of the BinomialHeap 'heap'; 
+        """Returns True if the referenced item is part of the BinomialHeap 'heap';
         False otherwise.
         """
         return self.in_tree and self.get_heap() == heap
@@ -170,7 +172,7 @@ class BinomialHeap(object):
 
         @staticmethod
         def roots_reverse(h):
-            """Reverse the heap root list. 
+            """Reverse the heap root list.
             Returns the new head. Also clears parent references.
             """
             if not h:
@@ -218,14 +220,14 @@ class BinomialHeap(object):
     def insert(self, key, value=None):
         """Insert 'value' in to the heap with priority 'key'. If 'value' is omitted,
         then 'key' is used as the value.
-        Returns a reference (of type ItemRef) to the internal node in the tree. 
+        Returns a reference (of type ItemRef) to the internal node in the tree.
         Use this reference to delete the key or to change its priority.
         """
         n = BinomialHeap.Node(self.ref.get_heap, key, value)
         self.__union(n)
         self.size += 1
         return n.ref
-    
+
     def union(self, other):
         """Merge 'other' into 'self'. Returns None.
         Note: This is a destructive operation; 'other' is an empty heap afterwards.
@@ -235,14 +237,14 @@ class BinomialHeap(object):
         self.__union(h2)
         other.ref.ref = self.ref
         other.__init__()
-    
+
     def min(self):
         """Returns the value with the minimum key (= highest priority) in the heap
         without removing it, or None if the heap is empty.
         """
         pos = self.__min()
         return pos[0].val if pos else None
-    
+
     def extract_min(self):
         """Returns the value with the minimum key (= highest priority) in the heap
         AND removes it from the heap, or None if the heap is empty.
@@ -269,7 +271,7 @@ class BinomialHeap(object):
         return self.head != None
 
     def __iter__(self):
-        """Returns a _destructive_ iterator over the values in the heap. 
+        """Returns a _destructive_ iterator over the values in the heap.
         This violates the iterator protocol slightly, but is very useful.
         """
         return self
@@ -279,7 +281,7 @@ class BinomialHeap(object):
         return self.size
 
     def __setitem__(self, key, value):
-        """Insert.  
+        """Insert.
         H[key] = value  is equivalent to  H.insert(key, value)
         """
         self.insert(key, value)
@@ -344,7 +346,7 @@ class BinomialHeap(object):
                 # x becomes the root of next
                 x.next = next.next
                 x.link(next)
-            else: 
+            else:
                 # next becomes the root of x
                 if not prev:
                     # update the "master" head
@@ -365,22 +367,22 @@ def heap(lst=[]):
     return BinomialHeap(lst)
 
 if __name__ == "__main__":
-    tokens1 = [(24, 'all'), (16, 'star'), (9, 'true.\nSinging'), (7, 'clear'), 
-               (25, 'praises'), (13, 'to'), (5, 'Heel'), 
+    tokens1 = [(24, 'all'), (16, 'star'), (9, 'true.\nSinging'), (7, 'clear'),
+               (25, 'praises'), (13, 'to'), (5, 'Heel'),
                (6, 'voices\nRinging'), (26, 'thine.'), (21, 'shine\nCarolina'),
-               (2, 'sound'), (20, 'radiance'), (12, 'N-C-U.\nHail'), 
-               (10, "Carolina's"), (3, 'of'), (17, 'of'), 
-               (23, 'gem.\nReceive'), (19, 'its'), (0, '\nHark'), 
-               (22, 'priceless'), (4, 'Tar'), (1, 'the'), (8, 'and'), 
-               (15, 'brightest'), (11, 'praises.\nShouting'), 
+               (2, 'sound'), (20, 'radiance'), (12, 'N-C-U.\nHail'),
+               (10, "Carolina's"), (3, 'of'), (17, 'of'),
+               (23, 'gem.\nReceive'), (19, 'its'), (0, '\nHark'),
+               (22, 'priceless'), (4, 'Tar'), (1, 'the'), (8, 'and'),
+               (15, 'brightest'), (11, 'praises.\nShouting'),
                (18, 'all\nClear'), (14, 'the')]
-    tokens2 = [(113, 'Tar'), (124, 'Rah!'), (112, 'a'), (103, 'Heel'), 
+    tokens2 = [(113, 'Tar'), (124, 'Rah!'), (112, 'a'), (103, 'Heel'),
                (104, "born\nI'm"), (122, 'Rah,'), (119, "Car'lina-lina\nRah,"),
-               (117, 'Rah,'), (102, 'Tar'), (108, 'bred\nAnd'), (125, 'Rah!'), 
-               (107, 'Heel'), (118, 'Rah,'), (111, "die\nI'm"), 
+               (117, 'Rah,'), (102, 'Tar'), (108, 'bred\nAnd'), (125, 'Rah!'),
+               (107, 'Heel'), (118, 'Rah,'), (111, "die\nI'm"),
                (115, 'dead.\nSo'), (120, 'Rah,'), (121, "Car'lina-lina\nRah,"),
-               (109, 'when'), (105, 'a'), (123, "Car'lina-lina\nRah!"), 
-               (110, 'I'), (114, 'Heel'), (101, 'a'), (106, 'Tar'), 
+               (109, 'when'), (105, 'a'), (123, "Car'lina-lina\nRah!"),
+               (110, 'I'), (114, 'Heel'), (101, 'a'), (106, 'Tar'),
                (100, "\nI'm"), (116, "it's")]
     h1 = heap(tokens1)
     h2 = heap(tokens2)
@@ -405,9 +407,9 @@ if __name__ == "__main__":
     print (t1ref in h2)
     print (t2ref in h1)
     print (bad[0] in h3)
-    
+
     for ref in bad:
         ref.delete()
     for x in h1:
-        print x, 
+        print x,
 
