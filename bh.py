@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 # Copyright (c) 2008, Bjoern B. Brandenburg <bbb [at] cs.unc.edu>
+#
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -44,7 +45,7 @@ From Wikipedia:
 
   More details: http://en.wikipedia.org/wiki/Binomial_heap
 
-This implementation realizes the operations as described in
+This implementation is based on the description in CLRS.
 """
 
 class ItemRef(object):
@@ -95,7 +96,16 @@ class ItemRef(object):
 
 
 class BinomialHeap(object):
-    """From Wi
+    """Usage:
+    > H1 = BinomialHeap()
+    > H1.insert(40, "fast.")
+    > H1.insert(10, "Merging")
+    > H2 = BinomialHeap([(30, "quite"), (20, "is")])
+    > H1 += H2
+    > for x in H1:
+    >   print x,
+     =>  "Merging is quite fast."
+
     """
 
     class Node(object):
