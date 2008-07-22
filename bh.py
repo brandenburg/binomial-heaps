@@ -68,7 +68,7 @@ class Node(object):
         self.degree  += 1
 
 
-def _merge(h1, h2):
+def roots_merge(h1, h2):
     """Merge two lists of heap roots, sorted by degree.
        Returns the new head.
     """
@@ -97,7 +97,7 @@ def _merge(h1, h2):
         p.next = h1
     return h
 
-def _reverse(h):
+def roots_reverse(h):
     """Reverse the heap root list. 
        Returns the new head.
     """
@@ -165,7 +165,7 @@ class BinomialHeap(object):
                 prev.next = x.next
             else:
                 self.head = x.next
-            kids =  _reverse(x.child)
+            kids =  roots_reverse(x.child)
             self.__union(kids)
             x.ref.in_tree = False
             return x.val
@@ -237,7 +237,7 @@ class BinomialHeap(object):
         if not h1:
             self.head = h2
             return
-        h1 = _merge(h1, h2)
+        h1 = roots_merge(h1, h2)
         prev = None
         x    = h1
         next = x.next
