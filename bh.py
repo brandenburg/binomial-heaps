@@ -45,18 +45,48 @@ From Wikipedia:
   More details: http://en.wikipedia.org/wiki/Binomial_heap
 """
 
+class NIL(object):
+    """Dummy class used during deletion and to denote the absence of values.
+    Behaves like negative infinity.
+    """
+    def __lt__(self, other):
+        return True
+    
+    def __le__(self, other):
+        return True
+
+    def __gt__(self, other):
+        return False
+
+    def __ge__(self, other):
+        return False
+
+    def __str__(self):
+        return 'NIL'
+
 # provide special value that is not None, since None is a valid value
-Nil = object()
+Nil = NIL()
 
 class NodeRef(object):
     "Reference to a node in the heap. Used for decreasing keys and deletion."
     def __init__(self, node):
-        self.ref = node
-        self.in_tree = True
+        self.ref      = node
+#        self.heap_ref = heap_ref
+        self.in_tree  = True
+    
+    def __str__(self):
+        if self.in_tree:
+            return "<BinomialHeap Reference to '%s'>" % str(self.ref.val)
+        else:
+            return "<stale BinomialHeap Reference>"
+
+    def decrease(self, new_key):
+        assert self.in_tree
+        assert self.ref.ref == self
+        self.ref.decrease(new_key)
 
 class Node(object):
     "Internal node of the heap. Don't use directly."
-
     def __init__(self, key, val=Nil):
         self.degree = 0
         self.parent = None
@@ -78,6 +108,24 @@ class Node(object):
         other.next    = self.child
         self.child    = other
         self.degree  += 1
+
+    def decrease(self, new_key):
+        node = self
+        assert new_key <= node.key
+        node.key = new_key
+        cur    = node
+        parent = cur.parent
+        while parent and cur.key < parent.key:
+            # need to bubble up
+            # swap refs
+            parent.ref.ref, cur.ref.ref = cur, parent
+            parent.ref, cur.ref         = cur.ref, parent.ref
+            # now swap keys and payload
+            parent.key, cur.key         = cur.key, parent.key
+            parent.val, cur.val         = cur.val, parent.val
+            # step up
+            cur    = parent
+            parent = cur.parent
 
     @staticmethod
     def roots_merge(h1, h2):
@@ -128,31 +176,16 @@ class Node(object):
         h.next = tail
         return h
 
-
-class NegInfinity(object):
-    "Negative infinity. Dummy class used during deletion."
-    def __lt__(self, other):
-        return True
-    
-    def __le__(self, other):
-        return True
-
-    def __gt__(self, other):
-        return False
-
-    def __ge__(self, other):
-        return False
-
-    def __str__(self):
-        return '-Inf'
-
-NegInf = NegInfinity()
-
 class BinomialHeap(object):
     """From Wi
     """
     def __init__(self, lst=[]):
+        """Populate a new heap with the (key, value) pairs in 'lst'.
+        If the elements of lst are not subscriptable, then they are treated as
+        opaque elements and inserted into the heap themselves.
+        """
         self.head = None
+        self.size = 0
         for x in lst:
             try:
                 self.insert(x[0], x[1])
@@ -160,25 +193,36 @@ class BinomialHeap(object):
                 self.insert(x)
 
     def insert(self, key, value=Nil):
-        """Insert value in to the 
+        """Insert 'value' in to the heap with priority 'key'. If 'value' is omitted,
+        then 'key' is used as the value.
+        Returns a reference (of type NodeRef) to the internal node in the tree. 
+        Use this reference to delete the key or change its priority.
         """
         n = Node(key, value)
         self.__union(n)
+        self.size += 1
         return n.ref
     
     def union(self, other):
-        """Merge other into self. Returns None.
-        Note: This is a destructive operation, other is an empty heap 
+        """Merge 'other' into 'self'. Returns None.
+        Note: This is a destructive operation; 'othe'r is an empty heap 
               afterwards.
         """
         h2, other.head = other.head, None
+        self.size, other.size = self.size + other.size, 0
         self.__union(h2)
     
     def min(self):
+        """Returns the value with the minimum key (= highest priority) in the heap
+        without removing it, or None if the heap is empty.
+        """
         pos = self.__min()
         return pos[0].val if pos else None
     
     def extract_min(self):
+        """Returns the value with the minimum key (= highest priority) in the heap
+        AND removes it from the heap, or None if the heap is empty.
+        """
         # find mininum
         pos = self.__min()
         if not pos:
@@ -193,37 +237,26 @@ class BinomialHeap(object):
             kids =  Node.roots_reverse(x.child)
             self.__union(kids)
             x.ref.in_tree = False
+            self.size -= 1
             return x.val
 
     def delete(self, noderef):
-        self.decrease(noderef, NegInf)
+        """Remove the node referenced by 'noderef' from the heap. 
+        """
+        self.decrease(noderef, Nil)
         self.extract_min()
-
-    def decrease(self, noderef, key):
-        assert noderef.in_tree
-        assert noderef.ref.ref == noderef
-        node = noderef.ref
-        assert key <= node.key
-        node.key = key
-        cur    = node
-        parent = cur.parent
-        while parent and cur.key < parent.key:
-            # need to bubble up
-            # swap refs
-            parent.ref.ref, cur.ref.ref = cur, parent
-            parent.ref, cur.ref         = cur.ref, parent.ref
-            # now swap keys and payload
-            parent.key, cur.key         = cur.key, parent.key
-            parent.val, cur.val         = cur.val, parent.val
-            # step up
-            cur    = parent
-            parent = cur.parent
 
     def __nonzero__(self):
         return self.head != None
 
     def __iter__(self):
         return self
+
+    def __len__(self):
+        return self.size
+
+    def __setitem__(self, key, value):
+        return self.insert(key, value)
 
     def __iadd__(self, other):
         self.union(other)
@@ -314,12 +347,16 @@ if __name__ == "__main__":
     h3 = heap()
     line = "\n==================================="
     h3.insert(90, line)
-    h3.insert(-1, line)
+    h3.insert(-2, line)
     h3.insert(200, line)
     h3.insert(201, '\n\n')
+    t1ref = h3.insert(1000, "\nUNC Alma Mater:")
+    t2ref = h3.insert(120, "\nUNC Fight Song:")
 
     h1 += h2
     h1 += h3
+    t1ref.decrease(-1)
+    t2ref.decrease(99)
     for x in h1:
         print x, 
 
