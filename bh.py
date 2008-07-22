@@ -99,17 +99,19 @@ def roots_merge(h1, h2):
 
 def roots_reverse(h):
     """Reverse the heap root list. 
-       Returns the new head.
+       Returns the new head. Also clears parent references.
     """
     if not h:
         return None
     tail = None
     next = h
+    h.parent = None
     while h.next:
         next = h.next
         h.next = tail
         tail   = h
         h = next
+        h.parent = None
     h.next = tail
     return h
 
