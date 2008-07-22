@@ -45,10 +45,12 @@ From Wikipedia:
   More details: http://en.wikipedia.org/wiki/Binomial_heap
 """
 
-class NodeRef(object):
-    """Reference to a node in the heap. Used for decreasing keys and deletion.
-    Do not use this class directly; only use instances returned by BinomialHeap.insert()!
-    You should only use NodeRef.delete() and NodeRef.decrease(new_priority).
+class ItemRef(object):
+    """Reference to an item in the heap. Used for decreasing keys and deletion.
+    Do not use this class directly; only use instances returned by 
+    BinomialHeap.insert()!
+
+    You should only use ItemRef.delete() and ItemRef.decrease(new_priority).
     """
     def __init__(self, node, get_heap):
         self.ref      = node
@@ -62,13 +64,13 @@ class NodeRef(object):
             return "<stale BinomialHeap Reference>"
 
     def decrease(self, new_key):
-        "Update the key of the referenced node to a lower value."
+        "Update the priority of the referenced item to a lower value."
         assert self.in_tree
         assert self.ref.ref == self
         self.ref.decrease(new_key)
 
     def delete(self):
-        """Remove the referenced node from the heap.
+        """Remove the referenced item from the heap.
         """
         self.decrease(self)
         v = self.get_heap().extract_min()
@@ -76,7 +78,8 @@ class NodeRef(object):
         assert v is self.ref.val
 
     def in_heap(self, heap):
-        """Returns True if 'self' is part of the BinomialHeap 'heap'; False otherwise.
+        """Returns True if the referenced item is part of the BinomialHeap 'heap'; 
+        False otherwise.
         """
         return self.in_tree and self.get_heap() == heap
 
@@ -88,100 +91,101 @@ class NodeRef(object):
         "Behaves like negative infinity: always False."
         return False
 
-class Node(object):
-    "Internal node of the heap. Don't use directly."
-    def __init__(self, get_heap, key, val=None):
-        self.degree = 0
-        self.parent = None
-        self.next   = None
-        self.child  = None
-        self.key    = key
-        self.ref    = NodeRef(self, get_heap)
-        if val == None:
-            val = key
-        self.val    = val
-
-    def __str__(self):
-        k = lambda x: str(x.key) if x else 'NIL'
-        return '(%s, c:%s, n:%s)' % (k(self), k(self.child), k(self.next))
-
-    def link(self, other):
-        "Makes other a subtree of self."
-        other.parent  = self
-        other.next    = self.child
-        self.child    = other
-        self.degree  += 1
-
-    def decrease(self, new_key):
-        node = self
-        assert new_key < node.key
-        node.key = new_key
-        cur    = node
-        parent = cur.parent
-        while parent and cur.key < parent.key:
-            # need to bubble up
-            # swap refs
-            parent.ref.ref, cur.ref.ref = cur, parent
-            parent.ref, cur.ref         = cur.ref, parent.ref
-            # now swap keys and payload
-            parent.key, cur.key         = cur.key, parent.key
-            parent.val, cur.val         = cur.val, parent.val
-            # step up
-            cur    = parent
-            parent = cur.parent
-
-    @staticmethod
-    def roots_merge(h1, h2):
-        """Merge two lists of heap roots, sorted by degree.
-        Returns the new head.
-        """
-        if not h1:
-            return h2
-        if not h2:
-            return h1
-        if h1.degree < h2.degree:
-            h  = h1
-            h1 = h.next
-        else:
-            h  = h2
-            h2 = h2.next
-        p = h
-        while h2 and h1:
-            if h1.degree < h2.degree:
-                p.next = h1
-                h1 = h1.next
-            else:
-                p.next = h2
-                h2 = h2.next
-            p = p.next
-        if h2:
-            p.next = h2
-        else:
-            p.next = h1
-        return h
-
-    @staticmethod
-    def roots_reverse(h):
-        """Reverse the heap root list. 
-        Returns the new head. Also clears parent references.
-        """
-        if not h:
-            return None
-        tail = None
-        next = h
-        h.parent = None
-        while h.next:
-            next = h.next
-            h.next = tail
-            tail   = h
-            h = next
-            h.parent = None
-        h.next = tail
-        return h
 
 class BinomialHeap(object):
     """From Wi
     """
+
+    class Node(object):
+        "Internal node of the heap. Don't use directly."
+        def __init__(self, get_heap, key, val=None):
+            self.degree = 0
+            self.parent = None
+            self.next   = None
+            self.child  = None
+            self.key    = key
+            self.ref    = ItemRef(self, get_heap)
+            if val == None:
+                val = key
+            self.val    = val
+
+        def __str__(self):
+            k = lambda x: str(x.key) if x else 'NIL'
+            return '(%s, c:%s, n:%s)' % (k(self), k(self.child), k(self.next))
+
+        def link(self, other):
+            "Makes other a subtree of self."
+            other.parent  = self
+            other.next    = self.child
+            self.child    = other
+            self.degree  += 1
+
+        def decrease(self, new_key):
+            node = self
+            assert new_key < node.key
+            node.key = new_key
+            cur    = node
+            parent = cur.parent
+            while parent and cur.key < parent.key:
+                # need to bubble up
+                # swap refs
+                parent.ref.ref, cur.ref.ref = cur, parent
+                parent.ref, cur.ref         = cur.ref, parent.ref
+                # now swap keys and payload
+                parent.key, cur.key         = cur.key, parent.key
+                parent.val, cur.val         = cur.val, parent.val
+                # step up
+                cur    = parent
+                parent = cur.parent
+
+        @staticmethod
+        def roots_merge(h1, h2):
+            """Merge two lists of heap roots, sorted by degree.
+            Returns the new head.
+            """
+            if not h1:
+                return h2
+            if not h2:
+                return h1
+            if h1.degree < h2.degree:
+                h  = h1
+                h1 = h.next
+            else:
+                h  = h2
+                h2 = h2.next
+            p = h
+            while h2 and h1:
+                if h1.degree < h2.degree:
+                    p.next = h1
+                    h1 = h1.next
+                else:
+                    p.next = h2
+                    h2 = h2.next
+                p = p.next
+            if h2:
+                p.next = h2
+            else:
+                p.next = h1
+            return h
+
+        @staticmethod
+        def roots_reverse(h):
+            """Reverse the heap root list. 
+            Returns the new head. Also clears parent references.
+            """
+            if not h:
+                return None
+            tail = None
+            next = h
+            h.parent = None
+            while h.next:
+                next = h.next
+                h.next = tail
+                tail   = h
+                h = next
+                h.parent = None
+            h.next = tail
+            return h
 
     class __Ref(object):
         def __init__(self, h):
@@ -214,10 +218,10 @@ class BinomialHeap(object):
     def insert(self, key, value=None):
         """Insert 'value' in to the heap with priority 'key'. If 'value' is omitted,
         then 'key' is used as the value.
-        Returns a reference (of type NodeRef) to the internal node in the tree. 
+        Returns a reference (of type ItemRef) to the internal node in the tree. 
         Use this reference to delete the key or to change its priority.
         """
-        n = Node(self.ref.get_heap, key, value)
+        n = BinomialHeap.Node(self.ref.get_heap, key, value)
         self.__union(n)
         self.size += 1
         return n.ref
@@ -254,7 +258,7 @@ class BinomialHeap(object):
                 prev.next = x.next
             else:
                 self.head = x.next
-            kids =  Node.roots_reverse(x.child)
+            kids = BinomialHeap.Node.roots_reverse(x.child)
             self.__union(kids)
             x.ref.in_tree = False
             self.size -= 1
@@ -297,10 +301,10 @@ class BinomialHeap(object):
             raise StopIteration
 
     def __contains__(self, ref):
-        """Test whether a given reference 'ref' is in this heap.
+        """Test whether a given reference 'ref' (of ItemRef) is in this heap.
         """
-        if type(ref) != NodeRef:
-            raise TypeError, "Expected a NodeRef"
+        if type(ref) != ItemRef:
+            raise TypeError, "Expected an ItemRef"
         else:
             return ref.in_heap(self)
 
@@ -327,7 +331,7 @@ class BinomialHeap(object):
         if not h1:
             self.head = h2
             return
-        h1 = Node.roots_merge(h1, h2)
+        h1 = BinomialHeap.Node.roots_merge(h1, h2)
         prev = None
         x    = h1
         next = x.next
@@ -388,7 +392,8 @@ if __name__ == "__main__":
     h3[201] = '\n\n'
     t1ref = h3.insert(1000, "\nUNC Alma Mater:")
     t2ref = h3.insert(120, "\nUNC Fight Song:")
-    bad   = [h3.insert(666, "Dook"), h3.insert(666, "Go Devils!"), 
+    bad   = [h3.insert(666, "Dook"),
+             h3.insert(666, "Go Devils!"),
              h3.insert(666, "Blue Devils") ]
 
 
