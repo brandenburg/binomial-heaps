@@ -26,7 +26,23 @@
 # ARISING IN ANY  WAY OUT OF THE USE  OF THIS SOFTWARE, EVEN IF  ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Binomial Heaps
+"""An implementation of Binomial Heaps.
+
+From Wikipedia: 
+  A binomial heap is a heap similar to a binary heap but also supporting the
+  operation of merging two heaps quickly. This is achieved by using a special
+  tree structure.
+
+  All of the following operations work in O(log n) time on a binomial heap with
+  n elements: 
+    - Insert a new element to the heap 
+    - Find the element with minimum key
+    - Delete the element with minimum key from the heap 
+    - Decrease key of a given element 
+    - Delete given element from the heap 
+    - Merge two given heaps to one heap
+
+  More details: http://en.wikipedia.org/wiki/Binomial_heap
 """
 
 # provide special value that is not None, since None is a valid value
@@ -40,6 +56,7 @@ class NodeRef(object):
 
 class Node(object):
     "Internal node of the heap. Don't use directly."
+
     def __init__(self, key, val=Nil):
         self.degree = 0
         self.parent = None
@@ -51,12 +68,7 @@ class Node(object):
             val = key
         self.val    = val
 
-    def all(self):
-        s = lambda x: x.all() if x else []
-        return [self.key] + s(self.child) + s(self.next)
-
     def __str__(self):
-        #return '(%s, %s)' % (self.key, self.val)
         k = lambda x: str(x.key) if x else 'NIL'
         return '(%s, c:%s, n:%s)' % (k(self), k(self.child), k(self.next))
 
@@ -67,53 +79,54 @@ class Node(object):
         self.child    = other
         self.degree  += 1
 
-
-def roots_merge(h1, h2):
-    """Merge two lists of heap roots, sorted by degree.
-       Returns the new head.
-    """
-    if not h1:
-        return h2
-    if not h2:
-        return h1
-    if h1.degree < h2.degree:
-        h  = h1
-        h1 = h.next
-    else:
-        h  = h2
-        h2 = h2.next
-    p = h
-    while h2 and h1:
+    @staticmethod
+    def roots_merge(h1, h2):
+        """Merge two lists of heap roots, sorted by degree.
+        Returns the new head.
+        """
+        if not h1:
+            return h2
+        if not h2:
+            return h1
         if h1.degree < h2.degree:
-            p.next = h1
-            h1 = h1.next
+            h  = h1
+            h1 = h.next
         else:
-            p.next = h2
+            h  = h2
             h2 = h2.next
-        p = p.next
-    if h2:
-        p.next = h2
-    else:
-        p.next = h1
-    return h
+        p = h
+        while h2 and h1:
+            if h1.degree < h2.degree:
+                p.next = h1
+                h1 = h1.next
+            else:
+                p.next = h2
+                h2 = h2.next
+            p = p.next
+        if h2:
+            p.next = h2
+        else:
+            p.next = h1
+        return h
 
-def roots_reverse(h):
-    """Reverse the heap root list. 
-       Returns the new head. Also clears parent references.
-    """
-    if not h:
-        return None
-    tail = None
-    next = h
-    h.parent = None
-    while h.next:
-        next = h.next
-        h.next = tail
-        tail   = h
-        h = next
+    @staticmethod
+    def roots_reverse(h):
+        """Reverse the heap root list. 
+        Returns the new head. Also clears parent references.
+        """
+        if not h:
+            return None
+        tail = None
+        next = h
         h.parent = None
-    h.next = tail
-    return h
+        while h.next:
+            next = h.next
+            h.next = tail
+            tail   = h
+            h = next
+            h.parent = None
+        h.next = tail
+        return h
 
 
 class NegInfinity(object):
@@ -135,19 +148,29 @@ class NegInfinity(object):
 
 NegInf = NegInfinity()
 
-
 class BinomialHeap(object):
+    """From Wi
+    """
     def __init__(self, lst=[]):
         self.head = None
         for x in lst:
-            self.insert(x)
+            try:
+                self.insert(x[0], x[1])
+            except TypeError:
+                self.insert(x)
 
     def insert(self, key, value=Nil):
+        """Insert value in to the 
+        """
         n = Node(key, value)
         self.__union(n)
         return n.ref
     
     def union(self, other):
+        """Merge other into self. Returns None.
+        Note: This is a destructive operation, other is an empty heap 
+              afterwards.
+        """
         h2, other.head = other.head, None
         self.__union(h2)
     
@@ -167,7 +190,7 @@ class BinomialHeap(object):
                 prev.next = x.next
             else:
                 self.head = x.next
-            kids =  roots_reverse(x.child)
+            kids =  Node.roots_reverse(x.child)
             self.__union(kids)
             x.ref.in_tree = False
             return x.val
@@ -203,10 +226,6 @@ class BinomialHeap(object):
         return self
 
     def __iadd__(self, other):
-        self.insert(other)
-        return self
-
-    def __ior__(self, other):
         self.union(other)
         return self
 
@@ -215,7 +234,7 @@ class BinomialHeap(object):
             return self.extract_min()
         else:
             raise StopIteration
-
+        
     def __min(self):
         if not self.head:
             return None
@@ -239,7 +258,7 @@ class BinomialHeap(object):
         if not h1:
             self.head = h2
             return
-        h1 = roots_merge(h1, h2)
+        h1 = Node.roots_merge(h1, h2)
         prev = None
         x    = h1
         next = x.next
@@ -267,5 +286,40 @@ class BinomialHeap(object):
         self.head = h1
 
 def heap(lst=[]):
-    "Shortcut for BinomialHeap(lst)"
+    """Create a new heap. lst should be a sequence of (key, value) pairs.
+    Shortcut for BinomialHeap(lst)
+    """
     return BinomialHeap(lst)
+
+if __name__ == "__main__":
+    tokens1 = [(24, 'all'), (16, 'star'), (9, 'true.\nSinging'), (7, 'clear'), 
+               (25, 'praises'), (13, 'to'), (5, 'Heel'), 
+               (6, 'voices\nRinging'), (26, 'thine.'), (21, 'shine\nCarolina'),
+               (2, 'sound'), (20, 'radiance'), (12, 'N-C-U.\nHail'), 
+               (10, "Carolina's"), (3, 'of'), (17, 'of'), 
+               (23, 'gem.\nReceive'), (19, 'its'), (0, '\nHark'), 
+               (22, 'priceless'), (4, 'Tar'), (1, 'the'), (8, 'and'), 
+               (15, 'brightest'), (11, 'praises.\nShouting'), 
+               (18, 'all\nClear'), (14, 'the')]
+    tokens2 = [(113, 'Tar'), (124, 'Rah!'), (112, 'a'), (103, 'Heel'), 
+               (104, "born\nI'm"), (122, 'Rah,'), (119, "Car'lina-lina\nRah,"),
+               (117, 'Rah,'), (102, 'Tar'), (108, 'bred\nAnd'), (125, 'Rah!'), 
+               (107, 'Heel'), (118, 'Rah,'), (111, "die\nI'm"), 
+               (115, 'dead.\nSo'), (120, 'Rah,'), (121, "Car'lina-lina\nRah,"),
+               (109, 'when'), (105, 'a'), (123, "Car'lina-lina\nRah!"), 
+               (110, 'I'), (114, 'Heel'), (101, 'a'), (106, 'Tar'), 
+               (100, "\nI'm"), (116, "it's")]
+    h1 = heap(tokens1)
+    h2 = heap(tokens2)
+    h3 = heap()
+    line = "\n==================================="
+    h3.insert(90, line)
+    h3.insert(-1, line)
+    h3.insert(200, line)
+    h3.insert(201, '\n\n')
+
+    h1 += h2
+    h1 += h3
+    for x in h1:
+        print x, 
+
