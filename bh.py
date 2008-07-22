@@ -370,19 +370,19 @@ if __name__ == "__main__":
     tokens1 = [(24, 'all'), (16, 'star'), (9, 'true.\nSinging'), (7, 'clear'),
                (25, 'praises'), (13, 'to'), (5, 'Heel'),
                (6, 'voices\nRinging'), (26, 'thine.'), (21, 'shine\nCarolina'),
-               (2, 'sound'), (20, 'radiance'), (12, 'N-C-U.\nHail'),
-               (10, "Carolina's"), (3, 'of'), (17, 'of'),
-               (23, 'gem.\nReceive'), (19, 'its'), (0, '\nHark'),
-               (22, 'priceless'), (4, 'Tar'), (1, 'the'), (8, 'and'),
-               (15, 'brightest'), (11, 'praises.\nShouting'),
-               (18, 'all\nClear'), (14, 'the')]
-    tokens2 = [(113, 'Tar'), (124, 'Rah!'), (112, 'a'), (103, 'Heel'),
-               (104, "born\nI'm"), (122, 'Rah,'), (119, "Car'lina-lina\nRah,"),
                (117, 'Rah,'), (102, 'Tar'), (108, 'bred\nAnd'), (125, 'Rah!'),
                (107, 'Heel'), (118, 'Rah,'), (111, "die\nI'm"),
                (115, 'dead.\nSo'), (120, 'Rah,'), (121, "Car'lina-lina\nRah,"),
                (109, 'when'), (105, 'a'), (123, "Car'lina-lina\nRah!"),
                (110, 'I'), (114, 'Heel'), (101, 'a'), (106, 'Tar'),
+               (18, 'all\nClear'), (14, 'the')]
+    tokens2 = [(113, 'Tar'), (124, 'Rah!'), (112, 'a'), (103, 'Heel'),
+               (104, "born\nI'm"), (122, 'Rah,'), (119, "Car'lina-lina\nRah,"),
+               (2, 'sound'), (20, 'radiance'), (12, 'N-C-U.\nHail'),
+               (10, "Carolina's"), (3, 'of'), (17, 'of'),
+               (23, 'gem.\nReceive'), (19, 'its'), (0, '\nHark'),
+               (22, 'priceless'), (4, 'Tar'), (1, 'the'), (8, 'and'),
+               (15, 'brightest'), (11, 'praises.\nShouting'),
                (100, "\nI'm"), (116, "it's")]
     h1 = heap(tokens1)
     h2 = heap(tokens2)
@@ -398,15 +398,24 @@ if __name__ == "__main__":
              h3.insert(666, "Go Devils!"),
              h3.insert(666, "Blue Devils") ]
 
+    ref = bad[0]
+    print "%s: \n\tin h1: %s\n\tin h2: %s\n\tin h3: %s" % \
+        (str(ref), ref in h1, ref in h2, ref in h3)
 
+    print "Merging h3 into h2..."
     h2 += h3
+
+    print "%s: \n\tin h1: %s\n\tin h2: %s\n\tin h3: %s" % \
+        (str(ref), ref in h1, ref in h2, ref in h3)
+
+    print "Merging h2 into h1..."
     h1 += h2
+
+    print "%s: \n\tin h1: %s\n\tin h2: %s\n\tin h3: %s" % \
+        (str(ref), ref in h1, ref in h2, ref in h3)
+
     t1ref.decrease(-1)
     t2ref.decrease(99)
-    print (t2ref in h3)
-    print (t1ref in h2)
-    print (t2ref in h1)
-    print (bad[0] in h3)
 
     for ref in bad:
         ref.delete()
