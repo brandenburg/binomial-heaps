@@ -59,7 +59,7 @@ static inline void iheap_init(struct iheap* heap)
 	heap->min  = NULL;
 }
 
-static inline void iheap_node_init_ref(struct iheap_node** _h, 
+static inline void iheap_node_init_ref(struct iheap_node** _h,
 				      int key, const void* value)
 {
 	struct iheap_node* h = *_h;
@@ -154,7 +154,7 @@ static inline struct iheap_node* __iheap_reverse(struct iheap_node* h)
 }
 
 static inline void __iheap_min(struct iheap* heap,
-			      struct iheap_node** prev, 
+			      struct iheap_node** prev,
 			      struct iheap_node** node)
 {
 	struct iheap_node *_prev, *cur;
