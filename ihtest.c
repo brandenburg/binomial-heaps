@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include "heap.h"
+#include "iheap.h"
 
 struct token {
 	int prio;
@@ -47,30 +47,23 @@ struct token bad[] = {
 	{666, "Dook"}, {666666, "Blue Devils"}
 };
 
-static int token_cmp(struct heap_node* _a, struct heap_node* _b)
+
+static void add_token(struct iheap* heap, struct token* tok)
 {
-	struct token *a, *b;
-	a = (struct token*) heap_node_value(_a);
-	b = (struct token*) heap_node_value(_b);
-	return a->prio < b->prio;
+	struct iheap_node* hn = malloc(sizeof(struct iheap_node));
+	iheap_node_init(hn, tok->prio, tok->str);
+	iheap_insert(heap, hn);
 }
 
-static void add_token(struct heap* heap, struct token* tok)
+static void add_token_ref(struct iheap* heap, struct token* tok,
+			  struct iheap_node** hn)
 {
-	struct heap_node* hn = malloc(sizeof(struct heap_node));
-	heap_node_init(hn, tok);
-	heap_insert(token_cmp, heap, hn);
+	*hn = malloc(sizeof(struct iheap_node));
+	iheap_node_init_ref(hn, tok->prio, tok->str);
+	iheap_insert(heap, *hn);
 }
 
-static void add_token_ref(struct heap* heap, struct token* tok,
-			  struct heap_node** hn)
-{
-	*hn = malloc(sizeof(struct heap_node));
-	heap_node_init_ref(hn, tok);
-	heap_insert(token_cmp, heap, *hn);
-}
-
-static void add_tokens(struct heap* heap, struct token* tok, int len)
+static void add_tokens(struct iheap* heap, struct token* tok, int len)
 {
 	int i;
 	for (i = 0; i < len; i++)
@@ -79,14 +72,14 @@ static void add_tokens(struct heap* heap, struct token* tok, int len)
 
 int main(int argc, char** argv)
 {
-	struct heap h1, h2, h3;
-	struct heap_node* hn;
-	struct heap_node *t1, *t2, *b1, *b2;
-	struct token *tok;
+	struct iheap h1, h2, h3;
+	struct iheap_node* hn;
+	struct iheap_node *t1, *t2, *b1, *b2;
+	const char *str;
 
-	heap_init(&h1);
-	heap_init(&h2);
-	heap_init(&h3);
+	iheap_init(&h1);
+	iheap_init(&h2);
+	iheap_init(&h3);
 
 	add_tokens(&h1, tokens1, LENGTH(tokens1));
 	add_tokens(&h2, tokens2, LENGTH(tokens2));
@@ -95,31 +88,29 @@ int main(int argc, char** argv)
 	add_token_ref(&h3, title, &t1);
 	add_token_ref(&h2, title + 1, &t2);
 
-	heap_union(token_cmp, &h2, &h3);
-	heap_union(token_cmp, &h1, &h2);
+	iheap_union(&h2, &h3);
+	iheap_union(&h1, &h2);
 
 	add_token_ref(&h3, bad, &b1);
 	add_token_ref(&h3, bad + 1, &b2);
 
-	heap_union(token_cmp, &h1, &h3);
+	iheap_union(&h1, &h3);
 
-	heap_delete(token_cmp, &h1, b1);
+	iheap_delete(&h1, b1);
 	free(b1);
-	heap_delete(token_cmp, &h1, b2);
+	iheap_delete(&h1, b2);
 	free(b2);
 
-	title[0].prio = -1;
-	title[1].prio = 99;
+	iheap_decrease(&h1, t1, -1);
+	iheap_decrease(&h1, t2, 99);
 
-	heap_decrease(token_cmp, &h1, t1);
-	heap_decrease(token_cmp, &h1, t2);
-
-	printf("htest:\n");
-	while (!heap_empty(&h1)) {
-		hn  = heap_take(token_cmp, &h1);
-		tok = heap_node_value(hn);
-		printf("%s ", tok->str);
+	printf("ihtest:\n");
+	while (!iheap_empty(&h1)) {
+		hn  = iheap_take(&h1);
+		str = iheap_node_value(hn);
+		printf("%s ", str);
 		free(hn);
 	}
 	return 0;
 }
+
