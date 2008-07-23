@@ -51,6 +51,9 @@ struct heap {
 	struct heap_node*	min;
 };
 
+/* item comparison function:
+ * return 1 if a has higher prio than b, 0 otherwise
+ */
 typedef int (*heap_prio_t)(struct heap_node* a, struct heap_node* b);
 
 static inline void heap_init(struct heap* heap)
@@ -59,7 +62,7 @@ static inline void heap_init(struct heap* heap)
 	heap->min  = NULL;
 }
 
-static inline void heap_node_init(struct heap_node** _h, void* value)
+static inline void heap_node_init_ref(struct heap_node** _h, void* value)
 {
 	struct heap_node* h = *_h;
 	h->parent = NULL;
@@ -68,6 +71,21 @@ static inline void heap_node_init(struct heap_node** _h, void* value)
 	h->degree = NOT_IN_HEAP;
 	h->value  = value;
 	h->ref    = _h;
+}
+
+static inline void heap_node_init(struct heap_node* h, void* value)
+{
+	h->parent = NULL;
+	h->next   = NULL;
+	h->child  = NULL;
+	h->degree = NOT_IN_HEAP;
+	h->value  = value;
+	h->ref    = NULL;
+}
+
+static inline void* heap_node_value(struct heap_node* h)
+{
+	return h->value;
 }
 
 static inline int heap_node_in_heap(struct heap_node* h)
@@ -279,6 +297,38 @@ static inline struct heap_node* heap_take(heap_prio_t higher_prio,
 	return node;
 }
 
+static inline void heap_decrease(heap_prio_t higher_prio, struct heap* heap,
+				 struct heap_node* node)
+{
+	struct heap_node *parent;
+	struct heap_node** tmp_ref;
+	void* tmp;
+
+	/* node's priority was decreased, we need to update its position */
+	if (!node->ref)
+		return;
+	if (heap->min != node) {
+		/* bubble up */
+		parent = node->parent;
+		while (parent && higher_prio(node, parent)) {
+			/* swap parent and node */
+			tmp           = parent->value;
+			parent->value = node->value;
+			node->value   = tmp;
+			/* swap references */
+			if (parent->ref)
+				*(parent->ref) = node;
+			*(node->ref)   = parent;
+			tmp_ref        = parent->ref;
+			parent->ref    = node->ref;
+			node->ref      = tmp_ref;
+			/* step up */
+			node   = parent;
+			parent = node->parent;
+		}
+	}
+}
+
 static inline void heap_delete(heap_prio_t higher_prio, struct heap* heap,
 			       struct heap_node* node)
 {
@@ -286,6 +336,8 @@ static inline void heap_delete(heap_prio_t higher_prio, struct heap* heap,
 	struct heap_node** tmp_ref;
 	void* tmp;
 
+	if (!node->ref) /* can only delete if we have a reference */
+		return;
 	if (heap->min != node) {
 		/* bubble up */
 		parent = node->parent;
@@ -295,7 +347,8 @@ static inline void heap_delete(heap_prio_t higher_prio, struct heap* heap,
 			parent->value = node->value;
 			node->value   = tmp;
 			/* swap references */
-			*(parent->ref) = node;
+			if (parent->ref)
+				*(parent->ref) = node;
 			*(node->ref)   = parent;
 			tmp_ref        = parent->ref;
 			parent->ref    = node->ref;
