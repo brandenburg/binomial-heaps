@@ -305,6 +305,8 @@ static inline void iheap_decrease(struct iheap* heap, struct iheap_node* node,
 		return;
 	node->key = new_key;
 	if (heap->min != node) {
+		if (heap->min && node->key < heap->min->key)
+			__iheap_uncache_min(heap);
 		/* bubble up */
 		parent = node->parent;
 		while (parent && node->key < parent->key) {
