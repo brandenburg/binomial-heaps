@@ -70,7 +70,7 @@ static void add_tokens(struct iheap* heap, struct token* tok, int len)
 		add_token(heap, tok + i);
 }
 
-int main(int argc, char** argv)
+int main(int argc  __attribute__((unused)), char** argv  __attribute__((unused)))
 {
 	struct iheap h1, h2, h3;
 	struct iheap_node* hn;
