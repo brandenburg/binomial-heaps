@@ -308,6 +308,8 @@ static inline void heap_decrease(heap_prio_t higher_prio, struct heap* heap,
 	if (!node->ref)
 		return;
 	if (heap->min != node) {
+		if (heap->min && higher_prio(node, heap->min))
+			__uncache_min(higher_prio, heap);
 		/* bubble up */
 		parent = node->parent;
 		while (parent && higher_prio(node, parent)) {
