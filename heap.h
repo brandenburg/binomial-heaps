@@ -1,6 +1,7 @@
 /* heap.h -- Binomial Heaps
  *
  * Copyright (c) 2008, Bjoern B. Brandenburg <bbb [at] cs.unc.edu>
+ * Modified by Juri Lelli <juri.lelli [at] sssup.it> (2012)
  *
  * All rights reserved.
  *
@@ -45,10 +46,11 @@ struct heap_node {
 
 struct heap {
 	struct heap_node* 	head;
-	/* We cache the minimum of the heap.
+	/* We cache minimum and next of the heap.
 	 * This speeds up repeated peek operations.
 	 */
 	struct heap_node*	min;
+	struct heap_node*	next;
 };
 
 /* item comparison function:
@@ -60,6 +62,7 @@ static inline void heap_init(struct heap* heap)
 {
 	heap->head = NULL;
 	heap->min  = NULL;
+	heap->next  = NULL;
 }
 
 static inline void heap_node_init_ref(struct heap_node** _h, void* value)
@@ -236,7 +239,7 @@ static inline struct heap_node* __heap_extract_min(heap_prio_t higher_prio,
 static inline void heap_insert(heap_prio_t higher_prio, struct heap* heap,
 			       struct heap_node* node)
 {
-	struct heap_node *min;
+	struct heap_node *min, *next;
 	node->child  = NULL;
 	node->parent = NULL;
 	node->next   = NULL;
@@ -250,13 +253,34 @@ static inline void heap_insert(heap_prio_t higher_prio, struct heap* heap,
 		min->degree = 0;
 		__heap_union(higher_prio, heap, min);
 		heap->min   = node;
+	} else if (heap->next && higher_prio(node, heap->next)) {
+		/* swap next cache */
+		next = heap->next;
+		next->child  = NULL;
+		next->parent = NULL;
+		next->next   = NULL;
+		next->degree = 0;
+		__heap_union(higher_prio, heap, next);
+		heap->next   = node;
 	} else
 		__heap_union(higher_prio, heap, node);
+}
+
+static inline void __uncache_next(heap_prio_t higher_prio, struct heap* heap)
+{
+	struct heap_node* next;
+	if (heap->next) {
+		next = heap->next;
+		heap->next = NULL;
+		heap_insert(higher_prio, heap, next);
+	}
 }
 
 static inline void __uncache_min(heap_prio_t higher_prio, struct heap* heap)
 {
 	struct heap_node* min;
+
+	__uncache_next(higher_prio, heap);
 	if (heap->min) {
 		min = heap->min;
 		heap->min = NULL;
@@ -284,14 +308,27 @@ static inline struct heap_node* heap_peek(heap_prio_t higher_prio,
 	return heap->min;
 }
 
+static inline struct heap_node* heap_peek_next(heap_prio_t higher_prio,
+					  struct heap* heap)
+{
+	if (!heap->min)
+		heap->min = __heap_extract_min(higher_prio, heap);
+	if (!heap->next)
+		heap->next = __heap_extract_min(higher_prio, heap);
+	return heap->next;
+}
+
 static inline struct heap_node* heap_take(heap_prio_t higher_prio,
 					  struct heap* heap)
 {
 	struct heap_node *node;
 	if (!heap->min)
 		heap->min = __heap_extract_min(higher_prio, heap);
+	if (!heap->next)
+		heap->next = __heap_extract_min(higher_prio, heap);
 	node = heap->min;
-	heap->min = NULL;
+	heap->min = heap->next;
+	heap->next = __heap_extract_min(higher_prio, heap);
 	if (node)
 		node->degree = NOT_IN_HEAP;
 	return node;
@@ -307,9 +344,11 @@ static inline void heap_decrease(heap_prio_t higher_prio, struct heap* heap,
 	/* node's priority was decreased, we need to update its position */
 	if (!node->ref)
 		return;
-	if (heap->min != node) {
+	if (heap->min != node && heap->next != node) {
 		if (heap->min && higher_prio(node, heap->min))
 			__uncache_min(higher_prio, heap);
+		else if (heap->next && higher_prio(node, heap->next))
+			__uncache_next(higher_prio, heap);
 		/* bubble up */
 		parent = node->parent;
 		while (parent && higher_prio(node, parent)) {
@@ -328,6 +367,18 @@ static inline void heap_decrease(heap_prio_t higher_prio, struct heap* heap,
 			node   = parent;
 			parent = node->parent;
 		}
+	} else if (heap->next == node && higher_prio(heap->next, heap->min)) {
+			/* swap min and next */
+			tmp           = heap->min->value;
+			heap->min->value = heap->next->value;
+			heap->next->value   = tmp;
+			/* swap references */
+			if (heap->min->ref)
+				*(heap->min->ref) = heap->next;
+			*(heap->next->ref)   = heap->min;
+			tmp_ref        = heap->min->ref;
+			heap->min->ref    = heap->next->ref;
+			heap->next->ref      = tmp_ref;
 	}
 }
 
@@ -340,7 +391,7 @@ static inline void heap_delete(heap_prio_t higher_prio, struct heap* heap,
 
 	if (!node->ref) /* can only delete if we have a reference */
 		return;
-	if (heap->min != node) {
+	if (heap->min != node && heap->next != node) {
 		/* bubble up */
 		parent = node->parent;
 		while (parent) {
@@ -373,8 +424,11 @@ static inline void heap_delete(heap_prio_t higher_prio, struct heap* heap,
 		else
 			heap->head = node->next;
 		__heap_union(higher_prio, heap, __heap_reverse(node->child));
+	} else if (heap->min == node) {
+		heap->min = heap->next;
+		heap->next = __heap_extract_min(higher_prio, heap);
 	} else
-		heap->min = NULL;
+		heap->next = NULL;
 	node->degree = NOT_IN_HEAP;
 }
 

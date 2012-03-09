@@ -1,7 +1,7 @@
 
 CFLAGS = -Wall -Wextra -Werror -ansi -std=c99 -pedantic
 
-ALL = htest ihtest
+ALL = htest htest-next ihtest
 
 .PHONY: clean all
 
@@ -11,5 +11,6 @@ clean:
 	rm -f ${ALL} *.pyc
 
 htest: htest.c
+htest-next: htest-next.c
 
 ihtest: ihtest.c
